@@ -1,0 +1,201 @@
+# Student Name: Evelyn Idogbe
+# Student ID: A00050322
+
+import datetime
+from tabulate import tabulate
+
+# ------------------------
+# Validation Functions
+# ------------------------
+
+def validate_student_id(student_id):
+    return student_id.isdigit() and len(student_id) == 2
+
+def validate_dob(dob):
+    try:
+        datetime.datetime.strptime(dob, "%Y-%m-%d")
+        return True
+    except ValueError:
+        return False
+
+def validate_score(score):
+    return score.isdigit() and 0 <= int(score) <= 100
+
+# ------------------------
+# Core Functionality
+# ------------------------
+
+def calculate_overall_score(scores):
+    return sum(scores) / len(scores)
+
+def determine_category(score):
+    if score >= 70:
+        return "First"
+    elif score >= 60:
+        return "Upper-First"
+    elif score >= 50:
+        return "Second"
+    else:
+        return "Third"
+
+def round_to_category(score):
+    if score >= 72:
+        return 75, "First"
+    elif score >= 68:
+        return 72, "Upper-First"
+    elif score >= 50:
+        return 68, "Second"
+    else:
+        return 50, "Third"
+
+def calculate_age(dob):
+    birth_date = datetime.datetime.strptime(dob, "%Y-%m-%d")
+    today = datetime.datetime.today()
+    return today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+
+# ------------------------
+# Input Function
+# ------------------------
+
+def get_student_data():
+    student_list = []
+    while len(student_list) < 3:
+        student_id = input("Enter student ID (2-digit number or 'end' to stop): ").strip()
+        if student_id.lower() == "end":
+            break
+        if not validate_student_id(student_id):
+            print("⚠ The input you entered was invalid: Student ID must be 2 digits.")
+            continue
+
+        name = input("Enter student's name: ").strip()
+        dob = input("Enter student's D.o.B (YYYY-MM-DD): ").strip()
+        if not validate_dob(dob):
+            print("⚠ The input you entered was invalid: Date format should be YYYY-MM-DD.")
+            continue
+
+        scores = []
+        for i in range(4):
+            score_input = input(f"Enter score for Component {i+1}: ").strip()
+            if not validate_score(score_input):
+                print("⚠ The input you entered was invalid: Score must be an integer between 0 and 100.")
+                break
+            scores.append(int(score_input))
+        else:
+            student_list.append((student_id, name, dob, scores))
+            continue
+        print("⚠ Failed to collect all scores correctly. Restarting this student entry...")
+
+    return student_list
+
+# ------------------------
+# Display and Save
+# ------------------------
+
+def display_results(students):
+    sorted_students = sorted(students, key=lambda x: x["ID"])
+    headers = ["UID", "Name", "D.o.B", "Age", "Raw Score", "Rounded Score", "Category"]
+    table = [[
+        s["ID"],
+        s["Name"],
+        s["D.o.B"],
+        s["Age"],
+        round(s["Score"], 2),
+        s["Rounded Score"],
+        s["Category"]
+    ] for s in sorted_students]
+    print("\n📊 Student Summary:\n")
+    print(tabulate(table, headers=headers))
+
+def save_results_to_file(students):
+    with open("students.txt", "w") as file:
+        file.write("UID Name D.o.B Age RawScore RoundedScore Category\n")
+        for s in students:
+            file.write(f"{s['ID']} {s['Name']} {s['D.o.B']} {s['Age']} {round(s['Score'], 2)} {s['Rounded Score']} {s['Category']}\n")
+    print("✅ Student data saved to students.txt")
+
+# ------------------------
+# Advanced Functions
+# ------------------------
+
+def advanced(filename, weights):
+    students = []
+    try:
+        with open(filename, "r") as file:
+            lines = file.readlines()
+
+        for line in lines:
+            parts = line.strip().split(",")
+            if len(parts) < 3:
+                continue
+            student_id, name, dob = parts[0], parts[1], parts[2]
+            scores = list(map(int, parts[3:]))
+            weighted_score = sum(score * w / 100 for score, w in zip(scores, weights))
+            category = determine_category(weighted_score)
+            age = calculate_age(dob)
+            rounded_score, rounded_category = round_to_category(weighted_score)
+
+            students.append({
+                "ID": student_id,
+                "Name": name,
+                "D.o.B": dob,
+                "Age": age,
+                "Score": weighted_score,
+                "Rounded Score": rounded_score,
+                "Category": rounded_category
+            })
+
+        display_results(students)
+        save_results_to_file(students)
+
+    except FileNotFoundError:
+        print("⚠ File not found. Please check the filename and try again.")
+
+def setup_module():
+    module_name = input("Enter module name: ").strip()
+    num_components = int(input("How many assessment components? "))
+    weights = []
+    for i in range(num_components):
+        comp_name = input(f"Component {i+1} name: ")
+        comp_weight = float(input(f"Component {i+1} weight (%): "))
+        weights.append(comp_weight)
+
+    if abs(sum(weights) - 100) > 0.01:
+        print("⚠ Total weight must equal 100%. Exiting setup.")
+        return None
+    print(f"✅ Module '{module_name}' setup complete.")
+    return weights
+
+# ------------------------
+# Main Entry
+# ------------------------
+
+def main():
+    print("🎓 Welcome to the Student Grading System\n")
+    student_data = get_student_data()
+    students = []
+
+    for student_id, name, dob, scores in student_data:
+        score = calculate_overall_score(scores)
+        category = determine_category(score)
+        rounded_score, rounded_category = round_to_category(score)
+        age = calculate_age(dob)
+
+        students.append({
+            "ID": student_id,
+            "Name": name,
+            "D.o.B": dob,
+            "Age": age,
+            "Score": score,
+            "Rounded Score": rounded_score,
+            "Category": rounded_category
+        })
+
+    display_results(students)
+    save_results_to_file(students)
+
+# weights = setup_module()
+# if weights:
+#     advanced("StudentData.txt", weights)
+
+if _name_ == "_main_":
+    main()
